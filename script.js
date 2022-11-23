@@ -28,11 +28,6 @@ async function searchOSM() {
   response = await fetch(request)
   let breweries = await response.json()
 
-  // Get the weather for the breweries
-  request = "https://api.open-meteo.com/v1/forecast?latitude=" + breweries[0].latitude + "&longitude=" + breweries[0].longitude + "&hourly=temperature_2m,precipitation"
-  response = await fetch(request)
-  let weather = await response.json()
-
   breweries_ul = document.querySelector("#breweries-result")
   breweries_ul.innerHTML = ""
   let lat_avg = 0
@@ -76,7 +71,23 @@ async function searchOSM() {
     );
   map.setCenter(position, 12);
 
-  document.querySelector("#weather-result").innerHTML = "Temperatur: " + weather.hourly.temperature_2m[0] + "°C, Precipitation: " + weather.hourly.precipitation[0] + "mm"
+  // Get the weather for the average position of breweries
+  request = "https://api.open-meteo.com/v1/forecast?latitude=" + lat_avg + "&longitude=" + lon_avg + "&hourly=temperature_2m,precipitation"
+  response = await fetch(request)
+  let weather = await response.json()
+
+  let temp_avg = 0
+  let prec_total = 0
+
+  for (i = 0; i < 5; i++) {
+    temp_avg += weather.hourly.temperature_2m[i]/5;
+    prec_total += weather.hourly.precipitation[0];
+  };
+
+  console.log(temp_avg);
+
+
+  document.querySelector("#weather-result").innerHTML = "Temperature: " + temp_avg.toFixed(1) + "°C<br> Precipitation: " + prec_total + "mm"
 }
 
 function initMap() {
