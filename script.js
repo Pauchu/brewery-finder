@@ -17,42 +17,64 @@ function darkMode() {
 }
 
 async function searchOSM() {
+  // Find coordinates of entered location
   let searchBar = document.querySelector("#osm-query")
   let request = "https://nominatim.openstreetmap.org/search/" + searchBar.value + "?format=json"
   let response = await fetch(request)
-  let city = await response.json()
+  let location = await response.json()
 
-  request = "https://api.openbrewerydb.org/breweries?by_dist=" + city[0].lat + "," + city[0].lon + "&per_page=5"
+  // Find the 5 breweries closest to the most likely result
+  request = "https://api.openbrewerydb.org/breweries?by_dist=" + location[0].lat + "," + location[0].lon + "&per_page=5"
   response = await fetch(request)
   let breweries = await response.json()
-  console.log(breweries[0])
 
+  // Get the weather for the breweries
   request = "https://api.open-meteo.com/v1/forecast?latitude=" + breweries[0].latitude + "&longitude=" + breweries[0].longitude + "&hourly=temperature_2m,precipitation"
   response = await fetch(request)
   let weather = await response.json()
-  console.log(weather);
 
-  if (breweries[0].website_url) {
-    let a = document.createElement("a")
-    a.href = breweries[0].website_url
-    a.innerHTML =
-      breweries[0].name +
-      ((breweries[0].street) ? ", " + breweries[0].street : "") +
-      ((breweries[0].city) ? ", " + breweries[0].city : "")
-    document.querySelector("#breweries-result").innerHTML = ""
-    document.querySelector("#breweries-result").append(a)
-  } else {
-    document.querySelector("#breweries-result").innerHTML =
-      breweries[0].name +
-      ((breweries[0].street) ? ", " + breweries[0].street : "") +
-      ((breweries[0].city) ? ", " + breweries[0].city : "")
-  }
+  breweries_ul = document.querySelector("#breweries-result")
+  breweries_ul.innerHTML = ""
+  let lat_avg = 0
+  let lon_avg = 0
+  let markers = map.getLayersByName("Markers")[0]
+  markers.clearMarkers()
 
-  let fromProjection = new OpenLayers.Projection("EPSG:4326");
-  let toProjection   = new OpenLayers.Projection("EPSG:900913"); // to Spherical Mercator Projection
-  let position       = new OpenLayers.LonLat(breweries[0].longitude, breweries[0].latitude).transform( fromProjection, toProjection);
-  let zoom           = 15;
-  map.setCenter(position, zoom );
+  breweries.forEach((brewery, i) => {
+    lat_avg += brewery.latitude/5;
+    lon_avg += brewery.longitude/5;
+
+    let position = new OpenLayers.LonLat(brewery.longitude, brewery.latitude)
+      .transform(
+        new OpenLayers.Projection("EPSG:4326"),
+        new OpenLayers.Projection("EPSG:900913")
+      );
+    markers.addMarker(new OpenLayers.Marker(position));
+
+    let li = document.createElement("li")
+    if (brewery.website_url) {
+      let a = document.createElement("a")
+      a.href = brewery.website_url
+      a.innerHTML =
+        brewery.name +
+        ((brewery.street) ? ", " + brewery.street : "") +
+        ((brewery.city) ? ", " + brewery.city : "")
+      li.append(a)
+    } else {
+      li.innerHTML =
+        brewery.name +
+        ((brewery.street) ? ", " + brewery.street : "") +
+        ((brewery.city) ? ", " + brewery.city : "")
+    }
+    breweries_ul.append(li);
+  });
+
+  let position = new OpenLayers.LonLat(lon_avg, lat_avg)
+    .transform(
+      new OpenLayers.Projection("EPSG:4326"),
+      new OpenLayers.Projection("EPSG:900913") // to Spherical Mercator Projection
+    );
+  map.setCenter(position, 12);
 
   document.querySelector("#weather-result").innerHTML = "Temperatur: " + weather.hourly.temperature_2m[0] + "°C, Precipitation: " + weather.hourly.precipitation[0] + "mm"
 }
@@ -60,8 +82,10 @@ async function searchOSM() {
 function initMap() {
   map = new OpenLayers.Map("basicMap");
   let mapnik = new OpenLayers.Layer.OSM();
+  let markers = new OpenLayers.Layer.Markers( "Markers" );
 
   map.addLayer(mapnik);
+  map.addLayer(markers)
   map.zoomToMaxExtent();
 }
 
