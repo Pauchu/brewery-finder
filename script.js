@@ -62,7 +62,7 @@ function initMap() {
   let mapnik = new OpenLayers.Layer.OSM();
 
   map.addLayer(mapnik);
-  map.zoomToMaxExtend();
+  map.zoomToMaxExtent();
 }
 
 // https://api.open-meteo.com/v1/
