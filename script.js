@@ -72,19 +72,30 @@ async function searchOSM() {
   map.setCenter(position, 12);
 
   // Get the weather for the average position of breweries
-  request = "https://api.open-meteo.com/v1/forecast?latitude=" + lat_avg + "&longitude=" + lon_avg + "&hourly=temperature_2m,precipitation"
+  request = "https://api.open-meteo.com/v1/forecast?latitude=" + lat_avg + "&longitude=" + lon_avg + "&hourly=temperature_2m,precipitation&current_weather=true&timezone=auto"
   response = await fetch(request)
   let weather = await response.json()
+
+  // find the index of weather entries for the current hour
+  let time_index
+  for (i = 0; i < 25; i++) {
+    if (weather.current_weather.time == weather.hourly.time[i]) {
+      time_index = i
+    }
+  }
+
+  console.log(time_index);
 
   let temp_avg = 0
   let prec_total = 0
 
-  for (i = 0; i < 5; i++) {
+  for (i = time_index; i < 5+time_index; i++) {
     temp_avg += weather.hourly.temperature_2m[i]/5;
-    prec_total += weather.hourly.precipitation[0];
+    console.log(weather.hourly.precipitation[i]);
+    prec_total += weather.hourly.precipitation[i];
   };
 
-  console.log(temp_avg);
+  console.log(prec_total);
 
 
   document.querySelector("#weather-result").innerHTML = "Temperature: " + temp_avg.toFixed(1) + "°C<br> Precipitation: " + prec_total + "mm"
